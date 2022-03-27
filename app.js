@@ -1,34 +1,45 @@
 const express = require('express');
 const app = express();
 require('dotenv').config();
+const Nexmo = require('nexmo');
+const socketio = require('socket.io');
+const bodyParser = require('body-parser');
 
-var AWS = require('aws-sdk');
+
+const Vonage = require('@vonage/server-sdk')
+
+const vonage = new Vonage({
+  apiKey: process.env.API_KEY,
+  apiSecret: process.env.API_SECRET,
+  signatureSecret: process.env.SIGNATURE_SECRET,
+  
+},{debug:true})
+// Body parser middleware
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+
+
 
 app.get('/', (req, res) => {
 
-    console.log("Message = " + req.query.message);
-    console.log("Number = " + req.query.number);
-    console.log("Subject = " + req.query.subject);
-    var params = {
-        Message: req.query.message,
-        PhoneNumber: '+' + req.query.number,
-        MessageAttributes: {
-            'AWS.SNS.SMS.SenderID': {
-                'DataType': 'String',
-                'StringValue': req.query.subject
-            }
+    
+const from = "Vonage APIs"
+const to = ""
+const text = 'Kredi bilgileriniz calindi'
+
+vonage.message.sendSms(from, to, text, (err, responseData) => {
+    if (err) {
+        res.json({message:err})
+    } else {
+        if(responseData.messages[0]['status'] === "0") {
+           res.json({message:" sent successfully"})
+        } else {
+            console.log(`Message failed with error: ${responseData.messages[0]['error-text']}`);
         }
-    };
+    }
+})
+  
 
-    var publishTextPromise = new AWS.SNS({ apiVersion: '2010-03-31' }).publish(params).promise();
-
-    publishTextPromise.then(
-        function (data) {
-            res.end(JSON.stringify({ MessageID: data.MessageId }));
-        }).catch(
-            function (err) {
-                res.end(JSON.stringify({ Error: err }));
-            });
 
 });
 
